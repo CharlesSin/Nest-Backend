@@ -1,22 +1,16 @@
-# Base image
-FROM node:20.9.0
+FROM node:20-alpine AS build
+WORKDIR /usr/src/app
+COPY package*.json  ./
+RUN npm ci
+COPY . .
+RUN npm run build && npm prune --production
 
-# Create app directory
+# Production
+FROM node:20-alpine AS production
 WORKDIR /usr/src/app
 
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-COPY package*.json ./
-
-# Install app dependencies
-RUN yarn
-
-# Bundle app source
-COPY . .
-
-# Creates a "dist" folder with the production build
-RUN yarn run build
+COPY  --from=build usr/src/app/dist ./dist
+COPY  --from=build usr/src/app/node_modules ./node_modules
 
 EXPOSE 3000/tcp
-
-# Start the server using the production build
-CMD [ "node", "dist/main" ]
+CMD [ "node", "dist/main.js" ]
